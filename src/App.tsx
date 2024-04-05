@@ -4,7 +4,9 @@ import Header from './components/Header'
 import UploadSection from './components/UploadSection'
 import QuerySection from './components/QuerySection'
 import ResultsView from './components/ResultsView'
+import Footer from './components/Footer'
 import { TableInfo, QueryResult, HistoryItem, CleanOption } from './types'
+import { loadFileToTable, executeSql, getDbSchema, initDb } from './services/database'
 
 const App: React.FC = () => {
     const [tables, setTables] = useState<TableInfo[]>([])
@@ -25,28 +27,146 @@ const App: React.FC = () => {
     useEffect(() => {
         const savedHistory = localStorage.getItem('excelspeak_history')
         if (savedHistory) setHistory(JSON.parse(savedHistory))
+
+        // Initialize database on app start
+        initDb().catch(console.error)
     }, [])
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        // Will be implemented in Phase 5
+        const files = e.target.files
+        if (!files || files.length === 0) return
+
         setIsUploading(true)
-        setTimeout(() => {
+        try {
+            // Initialize database first
+            await initDb()
+
+            const newTables: TableInfo[] = []
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i]
+                const tableName = `table_${tables.length + i + 1}`
+
+                try {
+                    const info = await loadFileToTable(file, tableName, cleanOption, '')
+                    newTables.push(info)
+
+                    // Show success message for each file
+                    console.log(`✅ File "${file.name}" loaded as table "${tableName}" with ${info.rowCount} rows`)
+                } catch (err) {
+                    console.error(`❌ Failed to load file "${file.name}":`, err)
+                    alert(`Failed to load "${file.name}". Please ensure it's a valid CSV or Excel file.`)
+                }
+            }
+
+            if (newTables.length > 0) {
+                setTables(prev => [...prev, ...newTables])
+
+                // Show summary
+                alert(`Successfully loaded ${newTables.length} file(s) with ${newTables.reduce((sum, t) => sum + t.rowCount, 0)} total rows`)
+            }
+        } catch (err) {
+            console.error('Upload error:', err)
+            alert("Upload failed. Please ensure files are valid and try again.")
+        } finally {
             setIsUploading(false)
-            alert('File upload will be implemented in Phase 5')
-        }, 1000)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
     }
 
     const handleRunAnalysis = async () => {
-        // Will be implemented in Phase 6
-        setIsLoading(true)
-        setTimeout(() => {
-            setIsLoading(false)
-            alert('Analysis will be implemented in Phase 6')
-        }, 1500)
+        if (mode === 'agent') {
+            if (!userInput.trim()) return
+            setIsLoading(true)
+            setResult(null)
+
+            try {
+                // For now, create a mock analysis until we implement Gemini in Phase 6
+                const mockSql = tables.length > 0
+                    ? `SELECT * FROM ${tables[0].name} LIMIT 10`
+                    : "SELECT 'Please upload data first' as message"
+
+                const dbResult = await executeSql(mockSql)
+
+                const finalOutput: QueryResult = {
+                    ...dbResult,
+                    explanation: "This is a mock explanation. Gemini AI integration will be added in Phase 6.",
+                    insights: {
+                        prediction: "Data patterns suggest moderate growth in key metrics",
+                        confidence: 0.75,
+                        reasoning: "Based on initial data analysis and statistical trends",
+                        whatIf: "If current trends continue, expect 15-20% growth over next quarter"
+                    },
+                    sql: mockSql
+                }
+
+                setResult(finalOutput)
+
+                // Add to history
+                const newItem: HistoryItem = {
+                    id: Date.now().toString(),
+                    query: userInput,
+                    sql: mockSql,
+                    timestamp: Date.now()
+                }
+                const newHistory = [newItem, ...history.slice(0, 19)]
+                setHistory(newHistory)
+                localStorage.setItem('excelspeak_history', JSON.stringify(newHistory))
+            } catch (err: any) {
+                alert(err.message || "Analysis failed. Please upload data first.")
+            } finally {
+                setIsLoading(false)
+            }
+        } else {
+            // Direct SQL mode
+            if (!rawSql.trim()) return
+            setIsLoading(true)
+            try {
+                const dbResult = await executeSql(rawSql)
+                setResult(dbResult)
+
+                // Add to history
+                const newItem: HistoryItem = {
+                    id: Date.now().toString(),
+                    query: "Manual SQL Query",
+                    sql: rawSql,
+                    timestamp: Date.now()
+                }
+                const newHistory = [newItem, ...history.slice(0, 19)]
+                setHistory(newHistory)
+                localStorage.setItem('excelspeak_history', JSON.stringify(newHistory))
+            } catch (err: any) {
+                alert(`SQL Error: ${err.message}`)
+            } finally {
+                setIsLoading(false)
+            }
+        }
     }
 
     const handleExport = () => {
-        alert('Export will be implemented in later phases')
+        if (!result || result.values.length === 0) {
+            alert("No data to export")
+            return
+        }
+
+        try {
+            const csvContent = [
+                result.columns.join(','),
+                ...result.values.map(v => v.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
+            ].join('\n')
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `excelspeak_export_${Date.now()}.csv`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            alert("Export failed. Please try again.")
+        }
     }
 
     return (
@@ -74,14 +194,14 @@ const App: React.FC = () => {
                     setMode={setMode}
                 />
 
-                <div className="p-4 md:p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+                <div className="p-4 md:p-8 space-y-8 max-w-[1600px] mx-auto w-full flex-1">
                     <section className="grid grid-cols-1 xl:grid-cols-12 gap-8">
                         <div className="xl:col-span-4 space-y-6">
                             <UploadSection
                                 cleanOption={cleanOption}
                                 setCleanOption={setCleanOption}
                                 handleFileUpload={handleFileUpload}
-                                fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
+                                fileInputRef={fileInputRef}
                                 isUploading={isUploading}
                             />
                         </div>
@@ -106,29 +226,9 @@ const App: React.FC = () => {
                         hasTables={tables.length > 0}
                         handleExport={handleExport}
                     />
-                </div>
 
-                {/* Copyright Footer */}
-                <footer className="mt-auto py-6 px-8 border-t border-slate-200 bg-white/50">
-                    <div className="max-w-[1600px] mx-auto w-full text-center">
-                        <p className="text-sm text-slate-500">
-                            Built with ❤️ by{' '}
-                            <a
-                                href="mailto:ahmedmohamedkhairy123@gmail.com"
-                                className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
-                            >
-                                Ahmed Mohamed Khairy
-                            </a>
-                            {' • '}
-                            <span className="text-slate-400">
-                                Empowering data-driven decisions through AI intelligence
-                            </span>
-                        </p>
-                        <p className="text-xs text-slate-400 mt-2">
-                            © {new Date().getFullYear()} ExcelSpeak AI Analytics Platform • All intellectual insights preserved
-                        </p>
-                    </div>
-                </footer>
+                    <Footer />
+                </div>
             </main>
         </div>
     )
