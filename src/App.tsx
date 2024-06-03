@@ -77,27 +77,35 @@ const App: React.FC = () => {
     const handleRunAnalysis = async () => {
         if (mode === 'agent') {
             if (!userInput.trim()) return
+            if (tables.length === 0) {
+                alert("Please upload data files first before using AI analysis.")
+                return
+            }
+
             setIsLoading(true)
             setResult(null)
 
             try {
-                // For now, create a mock analysis until we implement Gemini in Phase 6
-                const mockSql = tables.length > 0
-                    ? `SELECT * FROM ${tables[0].name} LIMIT 10`
-                    : "SELECT 'Please upload data first' as message"
+                // Import dynamically to avoid loading if not needed
+                const { processAgentRequest } = await import('./services/gemini')
 
-                const dbResult = await executeSql(mockSql)
+                // Get schema and sample data
+                const schema = await getDbSchema()
+                const sampleRes = tables.length > 0
+                    ? await executeSql(`SELECT * FROM ${tables[0].name} LIMIT 5`)
+                    : { values: [] }
+
+                // Get AI analysis
+                const analysis = await processAgentRequest(userInput, schema, sampleRes.values)
+
+                // Execute generated SQL
+                const dbResult = await executeSql(analysis.sql)
 
                 const finalOutput: QueryResult = {
                     ...dbResult,
-                    explanation: "This is a mock explanation. Gemini AI integration will be added in Phase 6.",
-                    insights: {
-                        prediction: "Data patterns suggest moderate growth in key metrics",
-                        confidence: 0.75,
-                        reasoning: "Based on initial data analysis and statistical trends",
-                        whatIf: "If current trends continue, expect 15-20% growth over next quarter"
-                    },
-                    sql: mockSql
+                    explanation: analysis.explanation,
+                    insights: analysis.insights,
+                    sql: analysis.sql
                 }
 
                 setResult(finalOutput)
@@ -106,19 +114,55 @@ const App: React.FC = () => {
                 const newItem: HistoryItem = {
                     id: Date.now().toString(),
                     query: userInput,
-                    sql: mockSql,
+                    sql: analysis.sql,
                     timestamp: Date.now()
                 }
                 const newHistory = [newItem, ...history.slice(0, 19)]
                 setHistory(newHistory)
                 localStorage.setItem('excelspeak_history', JSON.stringify(newHistory))
             } catch (err: any) {
-                alert(err.message || "Analysis failed. Please upload data first.")
+                console.error("Analysis error:", err)
+
+                // User-friendly error messages
+                let errorMessage = "Analysis failed. "
+
+                if (err.message.includes('API key')) {
+                    errorMessage += "Please configure your Gemini API key in the .env file. Get a free key from: https://makersuite.google.com/app/apikey"
+                } else if (err.message.includes('quota')) {
+                    errorMessage += "API quota exceeded. Please try again later or check your billing."
+                } else if (err.message.includes('SQL Error')) {
+                    errorMessage += `SQL Error: ${err.message.replace('SQL Error: ', '')}`
+                } else {
+                    errorMessage += err.message || "Please try again with a different query."
+                }
+
+                alert(errorMessage)
+
+                // Fallback to mock if AI fails
+                try {
+                    const mockSql = `SELECT * FROM ${tables[0].name} LIMIT 10`
+                    const dbResult = await executeSql(mockSql)
+
+                    const finalOutput: QueryResult = {
+                        ...dbResult,
+                        explanation: "Using fallback analysis. For full AI features, configure your Gemini API key.",
+                        insights: {
+                            prediction: "Configure Gemini API for advanced predictions",
+                            confidence: 0.5,
+                            reasoning: "Using basic data display without AI analysis",
+                            whatIf: "With Gemini API, you would get predictive insights here"
+                        },
+                        sql: mockSql
+                    }
+                    setResult(finalOutput)
+                } catch (fallbackError) {
+                    // Just show error
+                }
             } finally {
                 setIsLoading(false)
             }
         } else {
-            // Direct SQL mode
+            // Direct SQL mode (unchanged)
             if (!rawSql.trim()) return
             setIsLoading(true)
             try {
