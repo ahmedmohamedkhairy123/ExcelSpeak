@@ -1,11 +1,12 @@
 import React, { RefObject } from 'react'
+import { Database, Plus, RefreshCw } from 'lucide-react'
 import { CleanOption } from '../types'
 
 interface UploadSectionProps {
     cleanOption: CleanOption
     setCleanOption: (opt: CleanOption) => void
     handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
-    fileInputRef: RefObject<HTMLInputElement | null>  // Changed to accept null
+    fileInputRef: RefObject<HTMLInputElement | null>
     isUploading: boolean
 }
 
@@ -20,7 +21,7 @@ const UploadSection: React.FC<UploadSectionProps> = ({
         <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-300">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                    📁 Data Input
+                    <Database size={16} className="text-indigo-500" /> Data Input
                 </h2>
                 <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
                     On Error:
@@ -50,7 +51,7 @@ const UploadSection: React.FC<UploadSectionProps> = ({
 
                 <div className="text-center p-4 relative z-10 transform group-hover:-translate-y-1 transition-transform duration-300">
                     <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-3 group-hover:scale-110 group-hover:shadow-md transition-all">
-                        <div className="text-2xl">➕</div>
+                        <Plus className="text-indigo-600" size={24} />
                     </div>
                     <p className="text-sm font-bold text-slate-700">Import CSV/XLSX</p>
                     <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wide">Drag & Drop or Click</p>
@@ -58,7 +59,7 @@ const UploadSection: React.FC<UploadSectionProps> = ({
 
                 {isUploading && (
                     <div className="absolute inset-0 bg-white/95 flex flex-col items-center justify-center rounded-2xl z-20 backdrop-blur-sm">
-                        <div className="animate-spin text-indigo-600 mb-2 text-2xl">🔄</div>
+                        <RefreshCw size={24} className="animate-spin text-indigo-600 mb-2" />
                         <span className="text-xs font-bold text-slate-600 animate-pulse">Processing Data...</span>
                     </div>
                 )}
