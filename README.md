@@ -1,26 +1,20 @@
-# ExcelSpeak - AI SQL Analyst
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-A professional AI-driven data analytics platform that converts natural language to SQL, visualizes insights automatically, and provides predictive business intelligence.
+# Run and deploy your AI Studio app
 
-## Features
-- 📁 Upload CSV/XLSX files
-- 🤖 AI-powered natural language to SQL conversion
-- 📊 Automatic data visualization
-- 🔍 Predictive insights with Gemini AI
-- 💾 Local browser-based SQL execution
-- 📈 Interactive charts with Recharts
-- 🎯 Clean, modern UI with Tailwind CSS
+This contains everything you need to run your app locally.
 
-## Tech Stack
-- **Frontend**: React 19 + TypeScript + Vite
-- **Styling**: Tailwind CSS
-- **Charts**: Recharts
-- **Database**: SQL.js (in-browser SQLite)
-- **AI**: Google Gemini API
-- **Build Tool**: Vite
+View your app in AI Studio: https://ai.studio/apps/drive/1CFKJzp49hO_LXefgedtzI4xRMeh9qSZ9
 
-## Getting Started
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Set up environment variables
-4. Run dev server: `npm run dev`
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
