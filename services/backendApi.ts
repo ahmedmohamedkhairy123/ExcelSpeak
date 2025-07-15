@@ -29,7 +29,6 @@ export const backendApi = {
         const formData = new FormData();
         formData.append('file', file);
 
-        // Add cleaning options if provided
         if (cleanOption) {
             formData.append('cleanOption', cleanOption);
         }
@@ -37,9 +36,17 @@ export const backendApi = {
             formData.append('customVal', customVal);
         }
 
+        // Add auth token if exists
+        const token = localStorage.getItem('token');
+        const headers: HeadersInit = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(`${API_BASE}/data/upload`, {
             method: 'POST',
             body: formData,
+            headers,
         });
 
         if (!response.ok) {
@@ -53,7 +60,13 @@ export const backendApi = {
     // Get all tables from backend
     async getTables(): Promise<{ tables: BackendTable[] }> {
         try {
-            const response = await fetch(`${API_BASE}/data/tables`);
+            const token = localStorage.getItem('token');
+            const headers: HeadersInit = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`${API_BASE}/data/tables`, { headers });
             if (!response.ok) throw new Error('Failed to fetch tables');
             return response.json();
         } catch (error) {
@@ -65,9 +78,17 @@ export const backendApi = {
     // Save query to backend history
     async saveQuery(query: string, sql: string, result?: any): Promise<{ success: boolean; history: BackendHistoryItem }> {
         try {
+            const token = localStorage.getItem('token');
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const response = await fetch(`${API_BASE}/data/history`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ query, sql, result }),
             });
             return response.json();
@@ -80,7 +101,13 @@ export const backendApi = {
     // Get query history from backend
     async getHistory(limit: number = 20): Promise<{ history: BackendHistoryItem[] }> {
         try {
-            const response = await fetch(`${API_BASE}/data/history?limit=${limit}`);
+            const token = localStorage.getItem('token');
+            const headers: HeadersInit = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`${API_BASE}/data/history?limit=${limit}`, { headers });
             if (!response.ok) throw new Error('Failed to fetch history');
             return response.json();
         } catch (error) {
@@ -92,8 +119,15 @@ export const backendApi = {
     // Clear history from backend
     async clearHistory(): Promise<{ success: boolean; deletedCount: number }> {
         try {
+            const token = localStorage.getItem('token');
+            const headers: HeadersInit = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const response = await fetch(`${API_BASE}/data/history`, {
                 method: 'DELETE',
+                headers,
             });
             return response.json();
         } catch (error) {
@@ -105,8 +139,15 @@ export const backendApi = {
     // Delete table from backend
     async deleteTable(tableId: string): Promise<{ success: boolean }> {
         try {
+            const token = localStorage.getItem('token');
+            const headers: HeadersInit = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const response = await fetch(`${API_BASE}/data/tables/${tableId}`, {
                 method: 'DELETE',
+                headers,
             });
             return response.json();
         } catch (error) {

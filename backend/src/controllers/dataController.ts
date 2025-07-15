@@ -55,7 +55,7 @@ export class DataController {
 
     static async getTables(req: Request, res: Response) {
         try {
-            const userId = (req as any).user?.id;
+            const userId = (req as any).user?.id;  // Get user from auth middleware
             const tables = await db.getTables(userId);
             res.json({ tables });
         } catch (error: any) {
@@ -83,7 +83,7 @@ export class DataController {
     static async saveQuery(req: Request, res: Response) {
         try {
             const { query, sql, result } = req.body;
-            const userId = (req as any).user?.id;
+            const userId = (req as any).user?.id;  // Get user from auth middleware
 
             if (!query || !sql) {
                 return res.status(400).json({ error: 'Query and SQL are required' });

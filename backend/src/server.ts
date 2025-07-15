@@ -6,6 +6,8 @@ import Database from './models/Database';
 import { corsMiddleware } from './middleware/corsMiddleware';
 import { errorHandler } from './middleware/errorHandler';
 import dataRoutes from './routes/dataRoutes';
+import authRoutes from './routes/authRoutes';
+import { authMiddleware } from './middleware/auth';
 
 // Initialize database
 const db = Database.getInstance();
@@ -43,6 +45,8 @@ async function startServer() {
         }
 
         // API routes
+        app.use(authMiddleware);  // Add this line
+        app.use('/api/auth', authRoutes);  // Add this line
         app.use('/api/data', dataRoutes);
 
         // Test endpoint

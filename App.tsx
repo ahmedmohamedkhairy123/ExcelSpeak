@@ -12,6 +12,8 @@ import { TableInfo, QueryResult, HistoryItem, CleanOption } from './types';
 import { initDb, loadFileToTable, executeSql, getDbSchema } from './services/database';
 import { processAgentRequest } from './services/gemini';
 import { backendApi } from './services/backendApi';
+import Login from './components/Login';
+import { authApi } from './services/authApi';
 
 const App: React.FC = () => {
   const [tables, setTables] = useState<TableInfo[]>([]);
@@ -19,9 +21,9 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'files' | 'history'>('files');
   const [mode, setMode] = useState<'agent' | 'server'>('agent');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [useBackend, setUseBackend] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'disconnected' | 'connected' | 'checking'>('disconnected');
-
   const [userInput, setUserInput] = useState('');
   const [rawSql, setRawSql] = useState('');
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -38,6 +40,26 @@ const App: React.FC = () => {
     const savedHistory = localStorage.getItem('insight_history_v2');
     if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
+  // Check authentication on mount
+  useEffect(() => {
+    if (authApi.isAuthenticated()) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  // Check backend connection when useBackend changes
+  useEffect(() => {
+    if (useBackend && isAuthenticated) {
+      setBackendStatus('checking');
+      backendApi.testConnection()
+        .then(isConnected => {
+          setBackendStatus(isConnected ? 'connected' : 'disconnected');
+        })
+        .catch(() => setBackendStatus('disconnected'));
+    } else {
+      setBackendStatus('disconnected');
+    }
+  }, [useBackend, isAuthenticated]);
 
   // Check backend connection on mount and when useBackend changes
   useEffect(() => {
@@ -86,7 +108,7 @@ const App: React.FC = () => {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
-        if (useBackend && backendStatus === 'connected') {
+        if (useBackend && backendStatus === 'connected' && isAuthenticated) {
           // Use backend API
           const response = await backendApi.uploadFile(file, cleanOption, customVal);
           const backendTable = response.table;
@@ -99,10 +121,6 @@ const App: React.FC = () => {
           };
 
           newTables.push(tableInfo);
-
-          // Also save to local SQL.js for immediate use
-          const localTableName = `table_${tables.length + i + 1}`;
-          const localInfo = await loadFileToTable(file, localTableName, cleanOption, customVal);
 
         } else {
           // Use existing SQL.js logic
@@ -187,7 +205,10 @@ const App: React.FC = () => {
     link.download = `analysis_export_${Date.now()}.csv`;
     link.click();
   };
-
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  }
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900 selection:bg-indigo-100">
       <Sidebar
@@ -255,12 +276,12 @@ const App: React.FC = () => {
             <button
               onClick={() => setUseBackend(!useBackend)}
               className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${useBackend
-                  ? backendStatus === 'connected'
-                    ? 'bg-emerald-600 text-white'
-                    : backendStatus === 'checking'
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-red-600 text-white'
-                  : 'bg-slate-200 text-slate-700'
+                ? backendStatus === 'connected'
+                  ? 'bg-emerald-600 text-white'
+                  : backendStatus === 'checking'
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-red-600 text-white'
+                : 'bg-slate-200 text-slate-700'
                 }`}
               title={useBackend ? `Backend: ${backendStatus}` : 'Use local SQL.js'}
             >
@@ -273,6 +294,18 @@ const App: React.FC = () => {
               ) : (
                 'Local'
               )}
+            </button>
+
+            {/* LOGOUT BUTTON ADDED HERE */}
+            <button
+              onClick={() => {
+                authApi.logout();
+                setIsAuthenticated(false);
+              }}
+              className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-xs font-bold transition-all flex items-center gap-1.5"
+              title="Logout"
+            >
+              Logout
             </button>
           </div>
         </header>

@@ -45,32 +45,51 @@ class Database {
         await this.createTables();
     }
 
+    async getDb() {
+        if (!this.db) {
+            await this.initialize();
+        }
+        return this.db;
+    }
+
     private async createTables() {
         await this.db.exec(`
-      CREATE TABLE IF NOT EXISTS tables (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        columns TEXT NOT NULL,
-        row_count INTEGER NOT NULL,
-        file_name TEXT NOT NULL,
-        user_id TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
+    -- Users table
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 
-      CREATE TABLE IF NOT EXISTS query_history (
-        id TEXT PRIMARY KEY,
-        user_id TEXT,
-        query TEXT NOT NULL,
-        sql TEXT NOT NULL,
-        result TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
+    -- Existing tables (keep these)
+    CREATE TABLE IF NOT EXISTS tables (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      columns TEXT NOT NULL,
+      row_count INTEGER NOT NULL,
+      file_name TEXT NOT NULL,
+      user_id TEXT REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 
-      CREATE INDEX IF NOT EXISTS idx_tables_user_id ON tables(user_id);
-      CREATE INDEX IF NOT EXISTS idx_history_user_id ON query_history(user_id);
-      CREATE INDEX IF NOT EXISTS idx_history_timestamp ON query_history(timestamp);
-    `);
+    CREATE TABLE IF NOT EXISTS query_history (
+      id TEXT PRIMARY KEY,
+      user_id TEXT REFERENCES users(id),
+      query TEXT NOT NULL,
+      sql TEXT NOT NULL,
+      result TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Indexes
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_tables_user_id ON tables(user_id);
+    CREATE INDEX IF NOT EXISTS idx_history_user_id ON query_history(user_id);
+  `);
     }
 
     async saveTable(table: Omit<TableInfo, 'id' | 'createdAt' | 'updatedAt'>): Promise<TableInfo> {
