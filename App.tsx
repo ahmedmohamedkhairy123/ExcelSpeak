@@ -417,9 +417,14 @@ const App: React.FC = () => {
                     <p className="text-slate-700 text-base md:text-lg leading-relaxed font-medium">
                       {result.explanation}
                     </p>
-                    <div className="mt-6 p-3 bg-slate-50 rounded-lg border border-slate-100 font-mono text-[10px] text-slate-400 truncate">
-                      {result.sql}
-                    </div>
+                    <div className="mt-6 bg-slate-50 rounded-lg border border-slate-100 overflow-hidden">
+  <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+    Generated SQL
+  </div>
+  <pre className="p-4 font-mono text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap max-h-60">
+    {result.sql}
+  </pre>
+</div>
                   </div>
 
                   {/* Predictive Snapshot */}
