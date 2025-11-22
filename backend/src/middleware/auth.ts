@@ -11,11 +11,13 @@ export interface AuthRequest extends Request {
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
     // Skip auth for public routes
-    if (req.path === '/api/auth/login' ||
-        req.path === '/api/auth/register' ||
-        req.path === '/api/data/health') {
-        return next();
-    }
+     // Skip auth for public routes
+  const path = req.originalUrl || req.url;
+  if (path === '/api/auth/login' || 
+      path === '/api/auth/register' || 
+      path === '/api/data/health') {
+    return next();
+  }
 
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
