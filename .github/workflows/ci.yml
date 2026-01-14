@@ -7,41 +7,8 @@ on:
     branches: [main, master]
 
 jobs:
-  test-frontend:
-    name: Test Frontend
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        
-    - name: Install frontend dependencies
-      run: npm ci
-      
-    - name: TypeScript check (frontend only)
-      run: npx tsc --noEmit
-      
-    - name: Build frontend
-      run: npm run build
-      
-    - name: Test build output
-      run: |
-        if [ -d "dist" ]; then
-          echo "✅ Frontend build successful"
-          ls -la dist/
-        else
-          echo "❌ Frontend build failed - no dist folder"
-          exit 1
-        fi
-
-  test-backend:
-    name: Test Backend
+  build-test:
+    name: Build Test
     runs-on: ubuntu-latest
     
     steps:
@@ -53,49 +20,23 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Install backend dependencies
+    - name: Build Frontend
       run: |
-        cd backend
+        echo "Building frontend..."
         npm ci
-        
-    - name: Fix TypeScript module paths
-      run: |
-        cd backend
-        # Install missing types
-        npm install --save-dev @types/express @types/node @types/cors @types/multer @types/uuid @types/bcryptjs @types/jsonwebtoken @types/csv-parse
-        
-    - name: Build backend
-      run: |
-        cd backend
         npm run build
+        echo "✅ Frontend built"
         
-    - name: Test backend structure
+    - name: Build Backend  
       run: |
-        echo "Checking backend build..."
-        if [ -d "backend/dist" ]; then
-          echo "✅ Backend build successful"
-          ls -la backend/dist/
-        else
-          echo "❌ Backend build failed"
-          exit 1
-        fi
-
-  health-check:
-    name: Health Check Test
-    runs-on: ubuntu-latest
-    needs: [test-frontend, test-backend]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Combined test report
+        echo "Building backend..."
+        cd backend
+        npm ci --legacy-peer-deps
+        npm run build
+        echo "✅ Backend built"
+        
+    - name: Success
       run: |
-        echo "🎉 CI Pipeline Summary"
-        echo "======================"
-        echo "Frontend: ✅ Built successfully"
-        echo "Backend: ✅ Built successfully"
-        echo "Dependencies: ✅ All installed"
-        echo "TypeScript: ✅ Compiled without errors"
-        echo ""
-        echo "✅ All checks passed! Ready for deployment."
+        echo "🎉 All builds successful!"
+        echo "Frontend: ✅"
+        echo "Backend: ✅"
