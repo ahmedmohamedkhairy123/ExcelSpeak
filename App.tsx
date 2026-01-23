@@ -12,9 +12,9 @@ import { TableInfo, QueryResult, HistoryItem, CleanOption } from './types';
 import { initDb, loadFileToTable, executeSql, getDbSchema } from './services/database';
 import { processAgentRequest } from './services/gemini';
 import { backendApi } from './services/backendApi';
-import Login from './components/Login';
+import LoginModal from './components/loginModal'; // lowercase L
 import { authApi } from './services/authApi';
-
+import { mockApi } from './services/mockApi';
 const App: React.FC = () => {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -22,8 +22,10 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<'agent' | 'server'>('agent');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [useBackend, setUseBackend] = useState(false);
-  const [backendStatus, setBackendStatus] = useState<'disconnected' | 'connected' | 'checking'>('disconnected');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginMode, setLoginMode] = useState<'login' | 'signup'>('login');
+const [useBackend] = useState<'local'>('local'); // Always local mode
+const [backendStatus, setBackendStatus] = useState<'disconnected' | 'connected' | 'checking'>('disconnected');
   const [userInput, setUserInput] = useState('');
   const [rawSql, setRawSql] = useState('');
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -36,30 +38,31 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    initDb();
-    const savedHistory = localStorage.getItem('insight_history_v2');
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
-  }, []);
-  // Check authentication on mount
-  useEffect(() => {
-    if (authApi.isAuthenticated()) {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
+  // Initialize mock data storage (3 lines)
+  if (!localStorage.getItem('mock_users')) localStorage.setItem('mock_users', '[]');
+  if (!localStorage.getItem('mock_history')) localStorage.setItem('mock_history', '[]');
+  if (!localStorage.getItem('mock_tables')) localStorage.setItem('mock_tables', '[]');
+  
+  initDb();
+  const savedHistory = localStorage.getItem('insight_history_v2');
+  if (savedHistory) setHistory(JSON.parse(savedHistory));
+}, []);
   // Check backend connection when useBackend changes
-  useEffect(() => {
-    if (useBackend && isAuthenticated) {
-      setBackendStatus('checking');
-      backendApi.testConnection()
-        .then(isConnected => {
-          setBackendStatus(isConnected ? 'connected' : 'disconnected');
-        })
-        .catch(() => setBackendStatus('disconnected'));
-    } else {
-      setBackendStatus('disconnected');
-    }
-  }, [useBackend, isAuthenticated]);
+  // Check backend connection when useBackend changes
+useEffect(() => {
+  if (useBackend === 'backend' && isAuthenticated) {
+    setBackendStatus('checking');
+    backendApi.testConnection()
+      .then(isConnected => {
+        setBackendStatus(isConnected ? 'connected' : 'disconnected');
+      })
+      .catch(() => setBackendStatus('disconnected'));
+  } else if (useBackend === 'mock') {
+    setBackendStatus('connected'); // Mock is always connected
+  } else {
+    setBackendStatus('disconnected');
+  }
+}, [useBackend, isAuthenticated]);
 
   // Check backend connection on mount and when useBackend changes
   useEffect(() => {
@@ -98,48 +101,31 @@ const App: React.FC = () => {
     }
   }, [useBackend]);
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
 
-    setIsUploading(true);
-    try {
-      const newTables: TableInfo[] = [];
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        if (useBackend && backendStatus === 'connected' && isAuthenticated) {
-          // Use backend API
-          const response = await backendApi.uploadFile(file, cleanOption, customVal);
-          const backendTable = response.table;
-
-          const tableInfo: TableInfo = {
-            name: backendTable.name,
-            columns: backendTable.columns,
-            rowCount: backendTable.rowCount,
-            fileName: backendTable.fileName,
-          };
-
-          newTables.push(tableInfo);
-
-        } else {
-          // Use existing SQL.js logic
-          const tableName = `table_${tables.length + i + 1}`;
-          const info = await loadFileToTable(file, tableName, cleanOption, customVal);
-          newTables.push(info);
-        }
-      }
-
-      setTables(prev => [...prev, ...newTables]);
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Upload failed. Ensure files are valid CSV or XLSX format.");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+  setIsUploading(true);
+  try {
+    const newTables: TableInfo[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // ALWAYS use Local SQL.js logic (simple, no modes)
+      const tableName = `table_${tables.length + i + 1}`;
+      const info = await loadFileToTable(file, tableName, cleanOption, customVal);
+      newTables.push(info);
     }
-  };
-
+    
+    setTables(prev => [...prev, ...newTables]);
+  } catch (err: any) {
+    console.error(err);
+    alert(err.message || "Upload failed. Ensure files are valid CSV or XLSX format.");
+  } finally {
+    setIsUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+};
   const handleRunAnalysis = async () => {
     if (mode === 'agent') {
       if (!userInput.trim()) return;
@@ -206,9 +192,8 @@ const App: React.FC = () => {
     link.click();
   };
   // Show login screen if not authenticated
-  if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />;
-  }
+  // Only require login for Mock or Backend modes
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900 selection:bg-indigo-100">
       <Sidebar
@@ -257,57 +242,57 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="bg-slate-100 p-1 rounded-lg flex text-xs font-semibold">
-              <button
-                onClick={() => setMode('agent')}
-                className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${mode === 'agent' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <Sparkles size={14} /> AI Analyst
-              </button>
-              <button
-                onClick={() => setMode('server')}
-                className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${mode === 'server' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <Terminal size={14} /> SQL Editor
-              </button>
-            </div>
+  <div className="bg-slate-100 p-1 rounded-lg flex text-xs font-semibold">
+    <button
+      onClick={() => setMode('agent')}
+      className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${mode === 'agent' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+    >
+      <Sparkles size={14} /> AI Analyst
+    </button>
+    <button
+      onClick={() => setMode('server')}
+      className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${mode === 'server' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+    >
+      <Terminal size={14} /> SQL Editor
+    </button>
+  </div>
+  
+  
 
-            {/* ADD THIS BACKEND TOGGLE BUTTON */}
-            <button
-              onClick={() => setUseBackend(!useBackend)}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${useBackend
-                ? backendStatus === 'connected'
-                  ? 'bg-emerald-600 text-white'
-                  : backendStatus === 'checking'
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-red-600 text-white'
-                : 'bg-slate-200 text-slate-700'
-                }`}
-              title={useBackend ? `Backend: ${backendStatus}` : 'Use local SQL.js'}
-            >
-              {useBackend ? (
-                <>
-                  {backendStatus === 'connected' && '✓ Backend'}
-                  {backendStatus === 'checking' && '⟳ Checking...'}
-                  {backendStatus === 'disconnected' && '✗ Backend'}
-                </>
-              ) : (
-                'Local'
-              )}
-            </button>
-
-            {/* LOGOUT BUTTON ADDED HERE */}
-            <button
-              onClick={() => {
-                authApi.logout();
-                setIsAuthenticated(false);
-              }}
-              className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-xs font-bold transition-all flex items-center gap-1.5"
-              title="Logout"
-            >
-              Logout
-            </button>
-          </div>
+  {/* Login/Logout Buttons */}
+ {!isAuthenticated ? (
+  <div className="flex gap-1">
+    <button
+      onClick={() => {
+        setLoginMode('login');
+        setShowLoginModal(true);
+      }}
+      className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 transition-colors"
+    >
+      Login
+    </button>
+    <button
+      onClick={() => {
+        setLoginMode('signup');
+        setShowLoginModal(true);
+      }}
+      className="px-3 py-1.5 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 transition-colors"
+    >
+      Sign Up
+    </button>
+  </div>
+) : (
+  <button
+    onClick={() => {
+      authApi.logout();
+      setIsAuthenticated(false);
+    }}
+    className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-xs font-bold transition-all"
+  >
+    Logout
+  </button>
+)}
+</div>
         </header>
 
         <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -518,6 +503,16 @@ const App: React.FC = () => {
           ) : null}
         </div>
       </main>
+      {/* Login Modal */}
+      <LoginModal
+        open={showLoginModal}
+        mode={loginMode}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={(user) => {
+          setIsAuthenticated(true);
+          setShowLoginModal(false);
+        }}
+      />
     </div>
   );
 };

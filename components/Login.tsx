@@ -8,11 +8,13 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
     const [isLogin, setIsLogin] = useState(true);
-    const [email, setEmail] = useState('test@example.com');
-    const [password, setPassword] = useState('Test@Secure123');
-    const [name, setName] = useState('Test User');
+    const [email, setEmail] = useState('');
+const [password, setPassword] = useState('');
+const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showLoginModal, setShowLoginModal] = useState(false);
+const [loginMode, setLoginMode] = useState<'login' | 'signup'>('login');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

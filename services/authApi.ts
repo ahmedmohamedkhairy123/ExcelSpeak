@@ -1,53 +1,79 @@
-const API_BASE = 'http://localhost:5000/api';
+import { mockApi } from './mockApi';
 
 export interface User {
-    id: string;
-    email: string;
-    name: string;
+  id: string;
+  email: string;
+  name: string;
 }
 
 class AuthApi {
-    async login(email: string, password: string): Promise<{ user: User; token: string }> {
-        const response = await fetch(`${API_BASE}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
+  private mode: 'local' | 'backend' | 'mock' = 'local';
 
-        if (!response.ok) {
-            throw new Error('Login failed');
-        }
+  setMode(mode: 'local' | 'backend' | 'mock') {
+    this.mode = mode;
+  }
 
-        const data = await response.json();
-        localStorage.setItem('token', data.token);
-        return data;
+  async login(email: string, password: string): Promise<{ user: User; token: string }> {
+    if (this.mode === 'mock') {
+      return mockApi.login(email, password);
+    }
+    
+    // Original backend login
+    const response = await fetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    if (!response.ok) {
+      throw new Error('Login failed');
     }
 
-    async register(email: string, password: string, name: string) {
-        const response = await fetch(`${API_BASE}/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, name })
-        });
+    const data = await response.json();
+    localStorage.setItem('token', data.token);
+    return data;
+  }
 
-        if (!response.ok) {
-            throw new Error('Registration failed');
-        }
+  async register(email: string, password: string, name: string) {
+    if (this.mode === 'mock') {
+      return mockApi.register(email, password, name);
+    }
+    
+    const response = await fetch('http://localhost:5000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name })
+    });
 
-        return response.json();
+    if (!response.ok) {
+      throw new Error('Registration failed');
     }
 
-    logout() {
-        localStorage.removeItem('token');
-    }
+    return response.json();
+  }
 
-    getToken() {
-        return localStorage.getItem('token');
+  logout() {
+    if (this.mode === 'mock') {
+      mockApi.logout();
+    } else {
+      localStorage.removeItem('token');
     }
+  }
 
-    isAuthenticated() {
-        return !!this.getToken();
+  getToken() {
+    if (this.mode === 'mock') {
+      const user = mockApi.getCurrentUser();
+      return user?.token || null;
     }
+    return localStorage.getItem('token');
+  }
+
+  isAuthenticated() {
+    if (this.mode === 'mock') {
+      return mockApi.isAuthenticated();
+    }
+    return !!this.getToken();
+  }
 }
 
 export const authApi = new AuthApi();
