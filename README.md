@@ -4,6 +4,10 @@
 # ExcelSpeak - AI-Powered Data Analytics Platform
 
 © Copyright 2024 Ahmed Mohamed Khairy. All Rights Reserved.
+### 📋Statement of originality
+#### This project is entirely **my own original work**,developed from scratch 
+#### **No plagiarism**: No part of this repo has been copied from external sources or other developers 
+#### **Full Accountability** I , [Ahmed], assume full legal and professional responsibility for the authenticity of this 
 For technical inquiries or business opportunities: ahmedmohamedkhairy123@gmail.com
 # 🚀 Live Demo (please wait 5 seconds to see the GIF)
 ![Project Demo](./demo.gif)
