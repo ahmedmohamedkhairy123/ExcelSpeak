@@ -5,9 +5,9 @@
 
 © Copyright 2024 Ahmed Mohamed Khairy. All Rights Reserved.
 For technical inquiries or business opportunities: ahmedmohamedkhairy123@gmail.com
-
 ## 🚀 Live Demo
-[![Vercel Deployment](https://img.shields.io/badge/Live%20Demo-Vercel-black)](https://excel-speak.vercel.app)
+![Project Demo](./demo.gif)
+[![Vercel Deployment](https://img.shields.io/badge/Live%20Demo-Vercel-black)](https://excel-speak-three.vercel.app/)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/ahmedmohamedkhairy123/ExcelSpeak)
 
 ## 📋 Overview
